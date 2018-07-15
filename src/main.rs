@@ -12,9 +12,11 @@ use clap::{App, Arg};
 
 use png::HasParameters;
 
-use std::fs::{read_dir, DirBuilder, File, OpenOptions};
-use std::io::{BufWriter, Read, Write};
-use std::path::{Path, PathBuf};
+use std::{
+    fs::{read_dir, DirBuilder, File, OpenOptions},
+    io::{BufWriter, Read, Write},
+    path::{Path, PathBuf}
+};
 
 // -------------------------------------------------------------------------------------------------
 
