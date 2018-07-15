@@ -6,9 +6,9 @@ authors = ["Malte Thiesen <malte@kamalook.de>"]
 
 [dependencies]
 pcx = "0.2"
-png = "0.11"
-clap = "2.29"
+png = "0.12"
+clap = "2.32"
 
 [dependencies.error-chain]
-version = "0.11"
+version = "0.12"
 default-features = false
