@@ -360,8 +360,7 @@ fn main() {
 
         use std::io::Write;
         let stderr = &mut std::io::stderr();
-        let errmsg = "Error writing to stderr";
-        writeln!(stderr, "{}", formatted_err).expect(errmsg);
+        writeln!(stderr, "{}", formatted_err).expect("Error writing to stderr");
         pause();
 
         std::process::exit(1);
