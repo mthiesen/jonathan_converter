@@ -356,11 +356,7 @@ fn main() {
     println!();
 
     if let Err(ref err) = run(matches.value_of("DIRECTORY").unwrap_or(".")) {
-        let formatted_err = format_err(err);
-
-        use std::io::Write;
-        let stderr = &mut std::io::stderr();
-        writeln!(stderr, "{}", formatted_err).expect("Error writing to stderr");
+        eprintln!("{}", format_err(err));
         pause();
 
         std::process::exit(1);
