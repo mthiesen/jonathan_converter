@@ -351,7 +351,7 @@ fn main() {
                      The TCT files in the TEXT directory are converted to UTF-8 text files and written to the new directory TEXT_TXT.")
         .get_matches();
 
-    println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+    println!(concat!(env!("CARGO_PKG_NAME"), " ", env!("CARGO_PKG_VERSION")));
     println!(env!("CARGO_PKG_AUTHORS"));
     println!();
 
