@@ -1,6 +1,9 @@
+cargo-features = ["edition"]
+
 [package]
 name = "jonathan_converter"
 version = "1.0.0"
+edition = '2018'
 description = "Converts the graphics and text resources of the classic adventure game 'Jonathan' to regular PNG and text files"
 authors = ["Malte Thiesen <malte@kamalook.de>"]
 

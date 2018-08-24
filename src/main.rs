@@ -1,10 +1,5 @@
-#![feature(rust_2018_preview)]
-
-extern crate clap;
 #[macro_use]
 extern crate error_chain;
-extern crate pcx;
-extern crate png;
 
 error_chain!{}
 
@@ -12,7 +7,9 @@ error_chain!{}
 
 use clap::{App, Arg};
 
-use png::HasParameters;
+use pcx;
+
+use png::{self, HasParameters};
 
 use std::{
     fs::{read_dir, DirBuilder, File, OpenOptions},
@@ -46,7 +43,7 @@ fn is_file_with_extension(path: &Path, extension_upper: &str) -> bool {
     }
 }
 
-fn create_output_file(path: &Path) -> ::Result<File> {
+fn create_output_file(path: &Path) -> crate::Result<File> {
     OpenOptions::new()
         .write(true)
         .truncate(true)
@@ -64,7 +61,7 @@ fn to_output_filename(
     input_path: &Path,
     output_path: &Path,
     output_extension: &str
-) -> ::Result<PathBuf> {
+) -> crate::Result<PathBuf> {
     let stem = match input_path.file_stem() {
         Some(stem) => stem,
         None => bail!(
@@ -80,7 +77,7 @@ fn to_output_filename(
     Ok(output_filename)
 }
 
-fn read_file_contents(filename: &Path) -> ::Result<Vec<u8>> {
+fn read_file_contents(filename: &Path) -> crate::Result<Vec<u8>> {
     let mut input_file = OpenOptions::new().read(true).open(filename).chain_err(|| {
         format!(
             "Unable to open input file '{}'.",
@@ -105,7 +102,7 @@ fn format_err(err: &Error) -> String {
     formatted_err
 }
 
-fn convert_pcx(input_filename: &Path, output_filename: &Path) -> ::Result<()> {
+fn convert_pcx(input_filename: &Path, output_filename: &Path) -> crate::Result<()> {
     let input_file_contents = {
         let mut input_file_contents = read_file_contents(input_filename)?;
 
@@ -195,8 +192,8 @@ fn convert_dir(
     input_extension: &str,
     output_path: &Path,
     output_extension: &str,
-    conversion_fn: &Fn(&Path, &Path) -> ::Result<()>
-) -> ::Result<()> {
+    conversion_fn: &dyn Fn(&Path, &Path) -> crate::Result<()>
+) -> crate::Result<()> {
     let gfx_dir_reader = read_dir(&input_path).chain_err(|| {
         format!(
             "Unable to read directory '{}'. Is the provided path correct?",
@@ -254,7 +251,7 @@ fn convert_dir(
     Ok(())
 }
 
-fn convert_graphics(root_dir: &str) -> ::Result<()> {
+fn convert_graphics(root_dir: &str) -> crate::Result<()> {
     let gfx_input_path: PathBuf = [root_dir, GFX_INPUT_DIR].iter().collect();
     let gfx_output_path: PathBuf = [root_dir, GFX_OUTPUT_DIR].iter().collect();
 
@@ -267,7 +264,7 @@ fn convert_graphics(root_dir: &str) -> ::Result<()> {
     )
 }
 
-fn convert_txt(input_filename: &Path, output_filename: &Path) -> ::Result<()> {
+fn convert_txt(input_filename: &Path, output_filename: &Path) -> crate::Result<()> {
     let file_contents = read_file_contents(input_filename)?;
 
     let converted_file_contents = {
@@ -276,7 +273,7 @@ fn convert_txt(input_filename: &Path, output_filename: &Path) -> ::Result<()> {
         for &c in &file_contents {
             match c {
                 10 => s.push_str(LINE_ENDING),
-                11...137 => s.push((c - 10) as char),
+                11..=136 => s.push((c - 10) as char),
                 139 => s.push('ü'),
                 164 => s.push('Ü'),
                 142 => s.push('ä'),
@@ -306,7 +303,7 @@ fn convert_txt(input_filename: &Path, output_filename: &Path) -> ::Result<()> {
         })
 }
 
-fn convert_texts(root_dir: &str) -> ::Result<()> {
+fn convert_texts(root_dir: &str) -> crate::Result<()> {
     let txt_input_path: PathBuf = [root_dir, TEXT_INPUT_DIR].iter().collect();
     let txt_output_path: PathBuf = [root_dir, TEXT_OUTPUT_DIR].iter().collect();
 
@@ -329,7 +326,7 @@ fn pause() {
     let _ = stdin.read(&mut [0u8]).unwrap();
 }
 
-fn run(root_dir: &str) -> ::Result<()> {
+fn run(root_dir: &str) -> crate::Result<()> {
     println!("Converting graphics ...");
     convert_graphics(root_dir)?;
 
@@ -353,7 +350,11 @@ fn main() {
                      The TCT files in the TEXT directory are converted to UTF-8 text files and written to the new directory TEXT_TXT.")
         .get_matches();
 
-    println!(concat!(env!("CARGO_PKG_NAME"), " ", env!("CARGO_PKG_VERSION")));
+    println!(concat!(
+        env!("CARGO_PKG_NAME"),
+        " ",
+        env!("CARGO_PKG_VERSION")
+    ));
     println!(env!("CARGO_PKG_AUTHORS"));
     println!();
 
