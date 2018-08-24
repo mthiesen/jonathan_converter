@@ -1,3 +1,5 @@
+#![feature(rust_2018_preview)]
+
 extern crate clap;
 #[macro_use]
 extern crate error_chain;
@@ -358,7 +360,6 @@ fn main() {
     if let Err(ref err) = run(matches.value_of("DIRECTORY").unwrap_or(".")) {
         eprintln!("{}", format_err(err));
         pause();
-
         std::process::exit(1);
     } else {
         pause();
