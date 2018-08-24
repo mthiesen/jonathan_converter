@@ -50,7 +50,7 @@ fn create_output_file(path: &Path) -> Result<File> {
         .with_context(|_| {
             format!(
                 "Unable to create '{}'. Is the path writable?",
-                path.to_string_lossy()
+                path.display()
             )
         })?;
 
@@ -66,7 +66,7 @@ fn to_output_filename(
         Some(stem) => stem,
         None => bail!(
             "Input path '{}' does not have a stem.",
-            input_path.to_string_lossy()
+            input_path.display()
         )
     };
 
@@ -84,14 +84,14 @@ fn read_file_contents(filename: &Path) -> Result<Vec<u8>> {
         .with_context(|_| {
             format!(
                 "Unable to open input file '{}'.",
-                filename.to_string_lossy()
+                filename.display()
             )
         })?;
     let mut contents = Vec::new();
     let _ = input_file.read_to_end(&mut contents).with_context(|_| {
         format!(
             "Unable to read input file '{}'.",
-            filename.to_string_lossy()
+            filename.display()
         )
     })?;
     Ok(contents)
@@ -113,7 +113,7 @@ fn convert_pcx(input_filename: &Path, output_filename: &Path) -> Result<()> {
         if input_file_contents.len() < 4 {
             bail!(
                 "'{}' is too small to be a valid PCX file.",
-                input_filename.to_string_lossy()
+                input_filename.display()
             );
         }
 
@@ -128,14 +128,14 @@ fn convert_pcx(input_filename: &Path, output_filename: &Path) -> Result<()> {
     let mut pcx_file = pcx::Reader::new(input_file_contents.as_slice()).with_context(|_| {
         format!(
             "Unable to read contents of '{}' as PCX file.",
-            input_filename.to_string_lossy()
+            input_filename.display()
         )
     })?;
 
     if !pcx_file.is_paletted() || pcx_file.palette_length().unwrap_or(0) != 256 {
         bail!(
             "'{}' does not contain a 256 color PCX palette.",
-            input_filename.to_string_lossy()
+            input_filename.display()
         );
     }
 
@@ -152,7 +152,7 @@ fn convert_pcx(input_filename: &Path, output_filename: &Path) -> Result<()> {
                 .with_context(|_| {
                     format!(
                         "Error occurred while decoding '{}'.",
-                        input_filename.to_string_lossy()
+                        input_filename.display()
                     )
                 })?;
         }
@@ -164,7 +164,7 @@ fn convert_pcx(input_filename: &Path, output_filename: &Path) -> Result<()> {
         let _ = pcx_file.read_palette(&mut palette_data).with_context(|_| {
             format!(
                 "Error occurred while decoding palette of '{}'.",
-                input_filename.to_string_lossy()
+                input_filename.display()
             )
         })?;
         palette_data
@@ -178,15 +178,15 @@ fn convert_pcx(input_filename: &Path, output_filename: &Path) -> Result<()> {
 
     let mut png_writer = png_encoder
         .write_header()
-        .with_context(|_| format!("Unable to write to '{}'.", input_filename.to_string_lossy()))?;
+        .with_context(|_| format!("Unable to write to '{}'.", input_filename.display()))?;
 
     png_writer
         .write_chunk(png::chunk::PLTE, &palette_data)
-        .with_context(|_| format!("Unable to write to '{}'.", input_filename.to_string_lossy()))?;
+        .with_context(|_| format!("Unable to write to '{}'.", input_filename.display()))?;
 
     png_writer
         .write_image_data(&image_data)
-        .with_context(|_| format!("Unable to write to '{}'.", input_filename.to_string_lossy()))?;
+        .with_context(|_| format!("Unable to write to '{}'.", input_filename.display()))?;
 
     Ok(())
 }
@@ -201,14 +201,14 @@ fn convert_dir(
     let gfx_dir_reader = read_dir(&input_path).with_context(|_| {
         format!(
             "Unable to read directory '{}'. Is the provided path correct?",
-            input_path.to_string_lossy()
+            input_path.display()
         )
     })?;
 
     let _ = DirBuilder::new().create(&output_path).with_context(|_| {
         format!(
             "Unable to create output directory '{}'. Is the path writable?",
-            output_path.to_string_lossy()
+            output_path.display()
         )
     });
 
@@ -216,7 +216,7 @@ fn convert_dir(
         let entry = entry.with_context(|_| {
             format!(
                 "Unable to read directory entry in '{}'.",
-                input_path.to_string_lossy()
+                input_path.display()
             )
         })?;
         let input_filename = entry.path();
@@ -226,23 +226,23 @@ fn convert_dir(
                     |_| {
                         format!(
                             "Unable to create output filename for input file '{}'.",
-                            input_filename.to_string_lossy()
+                            input_filename.display()
                         )
                     }
                 )?;
 
             println!(
                 "Converting '{}' to '{}' ...",
-                input_filename.to_string_lossy(),
-                output_filename.to_string_lossy()
+                input_filename.display(),
+                output_filename.display()
             );
 
             let conversion_result =
                 conversion_fn(&input_filename, &output_filename).with_context(|_| {
                     format!(
                         "Unable to convert '{}' to '{}'.",
-                        input_filename.to_string_lossy(),
-                        output_filename.to_string_lossy()
+                        input_filename.display(),
+                        output_filename.display()
                     )
                 });
 
@@ -288,7 +288,7 @@ fn convert_txt(input_filename: &Path, output_filename: &Path) -> Result<()> {
                 235 => s.push('ß'),
                 _ => bail!(
                     "'{}' contains illegal character {}",
-                    input_filename.to_string_lossy(),
+                    input_filename.display(),
                     c
                 )
             };
@@ -302,7 +302,7 @@ fn convert_txt(input_filename: &Path, output_filename: &Path) -> Result<()> {
         .with_context(|_| {
             format!(
                 "Unable to write to '{}'.",
-                output_filename.to_string_lossy()
+                output_filename.display()
             )
         })?;
 
