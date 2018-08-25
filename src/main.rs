@@ -1,11 +1,8 @@
 use clap::{App, Arg};
-
 use failure::{bail, Fail, ResultExt};
-
 use pcx;
-
 use png::{self, HasParameters};
-
+use rayon::prelude::*;
 use std::{
     fs::{read_dir, DirBuilder, File, OpenOptions},
     io::{BufWriter, Read, Write},
@@ -81,19 +78,11 @@ fn read_file_contents(filename: &Path) -> Result<Vec<u8>> {
     let mut input_file = OpenOptions::new()
         .read(true)
         .open(filename)
-        .with_context(|_| {
-            format!(
-                "Unable to open input file '{}'.",
-                filename.display()
-            )
-        })?;
+        .with_context(|_| format!("Unable to open input file '{}'.", filename.display()))?;
     let mut contents = Vec::new();
-    let _ = input_file.read_to_end(&mut contents).with_context(|_| {
-        format!(
-            "Unable to read input file '{}'.",
-            filename.display()
-        )
-    })?;
+    let _ = input_file
+        .read_to_end(&mut contents)
+        .with_context(|_| format!("Unable to read input file '{}'.", filename.display()))?;
     Ok(contents)
 }
 
@@ -196,41 +185,48 @@ fn convert_dir(
     input_extension: &str,
     output_path: &Path,
     output_extension: &str,
-    conversion_fn: &dyn Fn(&Path, &Path) -> Result<()>
+    conversion_fn: &(dyn Fn(&Path, &Path) -> Result<()> + Sync)
 ) -> Result<()> {
-    let gfx_dir_reader = read_dir(&input_path).with_context(|_| {
+    let dir_reader = read_dir(&input_path).with_context(|_| {
         format!(
             "Unable to read directory '{}'. Is the provided path correct?",
             input_path.display()
         )
     })?;
 
-    let _ = DirBuilder::new().create(&output_path).with_context(|_| {
-        format!(
-            "Unable to create output directory '{}'. Is the path writable?",
-            output_path.display()
-        )
-    });
+    let _ = DirBuilder::new().create(&output_path);
 
-    for entry in gfx_dir_reader {
-        let entry = entry.with_context(|_| {
-            format!(
-                "Unable to read directory entry in '{}'.",
-                input_path.display()
-            )
-        })?;
-        let input_filename = entry.path();
-        if is_file_with_extension(&input_filename, input_extension) {
-            let output_filename =
-                to_output_filename(&input_filename, &output_path, output_extension).with_context(
-                    |_| {
-                        format!(
-                            "Unable to create output filename for input file '{}'.",
-                            input_filename.display()
-                        )
-                    }
-                )?;
+    let files_to_convert = {
+        let mut files_to_convert = Vec::new();
 
+        for entry in dir_reader {
+            let entry = entry.with_context(|_| {
+                format!(
+                    "Unable to read directory entry in '{}'.",
+                    input_path.display()
+                )
+            })?;
+            let input_filename = entry.path();
+            if is_file_with_extension(&input_filename, input_extension) {
+                let output_filename =
+                    to_output_filename(&input_filename, &output_path, output_extension)
+                        .with_context(|_| {
+                            format!(
+                                "Unable to create output filename for input file '{}'.",
+                                input_filename.display()
+                            )
+                        })?;
+
+                files_to_convert.push((input_filename.to_owned(), output_filename));
+            }
+        }
+
+        files_to_convert
+    };
+
+    files_to_convert
+        .par_iter()
+        .for_each(|(input_filename, output_filename)| {
             println!(
                 "Converting '{}' to '{}' ...",
                 input_filename.display(),
@@ -249,8 +245,7 @@ fn convert_dir(
             if let Err(err) = conversion_result {
                 println!("{}", format_fail(&err));
             }
-        }
-    }
+        });
 
     Ok(())
 }
@@ -299,12 +294,7 @@ fn convert_txt(input_filename: &Path, output_filename: &Path) -> Result<()> {
 
     let mut file = create_output_file(output_filename)?;
     file.write_all(converted_file_contents.as_bytes())
-        .with_context(|_| {
-            format!(
-                "Unable to write to '{}'.",
-                output_filename.display()
-            )
-        })?;
+        .with_context(|_| format!("Unable to write to '{}'.", output_filename.display()))?;
 
     Ok(())
 }
