@@ -1,14 +1,13 @@
 [package]
 name = "jonathan_converter"
 version = "1.0.0"
+edition = "2018"
 description = "Converts the graphics and text resources of the classic adventure game 'Jonathan' to regular PNG and text files"
 authors = ["Malte Thiesen <malte@kamalook.de>"]
 
 [dependencies]
+clap = "2.32"
+failure = "0.1.2"
 pcx = "0.2"
 png = "0.12"
-clap = "2.32"
-
-[dependencies.error-chain]
-version = "0.12"
-default-features = false
+rayon = "1.0.2"

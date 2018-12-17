@@ -1,22 +1,16 @@
-extern crate clap;
-#[macro_use]
-extern crate error_chain;
-extern crate pcx;
-extern crate png;
-
-error_chain!{}
-
-// -------------------------------------------------------------------------------------------------
-
 use clap::{App, Arg};
-
-use png::HasParameters;
-
+use failure::{bail, Fail, ResultExt};
+use pcx;
+use png::{self, HasParameters};
+use rayon::prelude::*;
 use std::{
     fs::{read_dir, DirBuilder, File, OpenOptions},
     io::{BufWriter, Read, Write},
+    iter,
     path::{Path, PathBuf}
 };
+
+type Result<T> = failure::Fallible<T>;
 
 // -------------------------------------------------------------------------------------------------
 
@@ -44,30 +38,32 @@ fn is_file_with_extension(path: &Path, extension_upper: &str) -> bool {
     }
 }
 
-fn create_output_file(path: &Path) -> ::Result<File> {
-    OpenOptions::new()
+fn create_output_file(path: &Path) -> Result<File> {
+    let file = OpenOptions::new()
         .write(true)
         .truncate(true)
         .create(true)
         .open(&path)
-        .chain_err(|| {
+        .with_context(|_| {
             format!(
                 "Unable to create '{}'. Is the path writable?",
-                path.to_string_lossy()
+                path.display()
             )
-        })
+        })?;
+
+    Ok(file)
 }
 
 fn to_output_filename(
     input_path: &Path,
     output_path: &Path,
     output_extension: &str
-) -> ::Result<PathBuf> {
+) -> Result<PathBuf> {
     let stem = match input_path.file_stem() {
         Some(stem) => stem,
         None => bail!(
             "Input path '{}' does not have a stem.",
-            input_path.to_string_lossy()
+            input_path.display()
         )
     };
 
@@ -78,39 +74,35 @@ fn to_output_filename(
     Ok(output_filename)
 }
 
-fn read_file_contents(filename: &Path) -> ::Result<Vec<u8>> {
-    let mut input_file = OpenOptions::new().read(true).open(filename).chain_err(|| {
-        format!(
-            "Unable to open input file '{}'.",
-            filename.to_string_lossy()
-        )
-    })?;
+fn read_file_contents(filename: &Path) -> Result<Vec<u8>> {
+    let mut input_file = OpenOptions::new()
+        .read(true)
+        .open(filename)
+        .with_context(|_| format!("Unable to open input file '{}'.", filename.display()))?;
     let mut contents = Vec::new();
-    let _ = input_file.read_to_end(&mut contents).chain_err(|| {
-        format!(
-            "Unable to read input file '{}'.",
-            filename.to_string_lossy()
-        )
-    })?;
+    let _ = input_file
+        .read_to_end(&mut contents)
+        .with_context(|_| format!("Unable to read input file '{}'.", filename.display()))?;
     Ok(contents)
 }
 
-fn format_err(err: &Error) -> String {
-    let mut formatted_err = format!("error: {}\n", err);
-    for e in err.iter().skip(1) {
-        formatted_err.push_str(&format!("caused by: {}\n", e));
+fn format_fail(fail: &dyn Fail) -> String {
+    let mut formatted_fail = String::new();
+    let prefixes = iter::once("error").chain(iter::repeat("caused by"));
+    for (prefix, cause) in prefixes.zip(fail.iter_chain()) {
+        formatted_fail.push_str(&format!("{}: {}\n", prefix, cause));
     }
-    formatted_err
+    formatted_fail
 }
 
-fn convert_pcx(input_filename: &Path, output_filename: &Path) -> ::Result<()> {
+fn convert_pcx(input_filename: &Path, output_filename: &Path) -> Result<()> {
     let input_file_contents = {
         let mut input_file_contents = read_file_contents(input_filename)?;
 
         if input_file_contents.len() < 4 {
             bail!(
                 "'{}' is too small to be a valid PCX file.",
-                input_filename.to_string_lossy()
+                input_filename.display()
             );
         }
 
@@ -122,17 +114,17 @@ fn convert_pcx(input_filename: &Path, output_filename: &Path) -> ::Result<()> {
         input_file_contents
     };
 
-    let mut pcx_file = pcx::Reader::new(input_file_contents.as_slice()).chain_err(|| {
+    let mut pcx_file = pcx::Reader::new(input_file_contents.as_slice()).with_context(|_| {
         format!(
             "Unable to read contents of '{}' as PCX file.",
-            input_filename.to_string_lossy()
+            input_filename.display()
         )
     })?;
 
     if !pcx_file.is_paletted() || pcx_file.palette_length().unwrap_or(0) != 256 {
         bail!(
             "'{}' does not contain a 256 color PCX palette.",
-            input_filename.to_string_lossy()
+            input_filename.display()
         );
     }
 
@@ -146,10 +138,10 @@ fn convert_pcx(input_filename: &Path, output_filename: &Path) -> ::Result<()> {
             let end = begin + width;
             pcx_file
                 .next_row_paletted(&mut image_data[begin..end])
-                .chain_err(|| {
+                .with_context(|_| {
                     format!(
                         "Error occurred while decoding '{}'.",
-                        input_filename.to_string_lossy()
+                        input_filename.display()
                     )
                 })?;
         }
@@ -158,10 +150,10 @@ fn convert_pcx(input_filename: &Path, output_filename: &Path) -> ::Result<()> {
 
     let palette_data = {
         let mut palette_data = [0u8; 256 * 3];
-        let _ = pcx_file.read_palette(&mut palette_data).chain_err(|| {
+        let _ = pcx_file.read_palette(&mut palette_data).with_context(|_| {
             format!(
                 "Error occurred while decoding palette of '{}'.",
-                input_filename.to_string_lossy()
+                input_filename.display()
             )
         })?;
         palette_data
@@ -175,15 +167,15 @@ fn convert_pcx(input_filename: &Path, output_filename: &Path) -> ::Result<()> {
 
     let mut png_writer = png_encoder
         .write_header()
-        .chain_err(|| format!("Unable to write to '{}'.", input_filename.to_string_lossy()))?;
+        .with_context(|_| format!("Unable to write to '{}'.", input_filename.display()))?;
 
     png_writer
         .write_chunk(png::chunk::PLTE, &palette_data)
-        .chain_err(|| format!("Unable to write to '{}'.", input_filename.to_string_lossy()))?;
+        .with_context(|_| format!("Unable to write to '{}'.", input_filename.display()))?;
 
     png_writer
         .write_image_data(&image_data)
-        .chain_err(|| format!("Unable to write to '{}'.", input_filename.to_string_lossy()))?;
+        .with_context(|_| format!("Unable to write to '{}'.", input_filename.display()))?;
 
     Ok(())
 }
@@ -193,66 +185,72 @@ fn convert_dir(
     input_extension: &str,
     output_path: &Path,
     output_extension: &str,
-    conversion_fn: &Fn(&Path, &Path) -> ::Result<()>
-) -> ::Result<()> {
-    let gfx_dir_reader = read_dir(&input_path).chain_err(|| {
+    conversion_fn: &(dyn Fn(&Path, &Path) -> Result<()> + Sync)
+) -> Result<()> {
+    let dir_reader = read_dir(&input_path).with_context(|_| {
         format!(
             "Unable to read directory '{}'. Is the provided path correct?",
-            input_path.to_string_lossy()
+            input_path.display()
         )
     })?;
 
-    let _ = DirBuilder::new().create(&output_path).chain_err(|| {
-        format!(
-            "Unable to create output directory '{}'. Is the path writable?",
-            output_path.to_string_lossy()
-        )
-    });
+    let _ = DirBuilder::new().create(&output_path);
 
-    for entry in gfx_dir_reader {
-        let entry = entry.chain_err(|| {
-            format!(
-                "Unable to read directory entry in '{}'.",
-                input_path.to_string_lossy()
-            )
-        })?;
-        let input_filename = entry.path();
-        if is_file_with_extension(&input_filename, input_extension) {
-            let output_filename =
-                to_output_filename(&input_filename, &output_path, output_extension).chain_err(
-                    || {
-                        format!(
-                            "Unable to create output filename for input file '{}'.",
-                            input_filename.to_string_lossy()
-                        )
-                    }
-                )?;
+    let files_to_convert = {
+        let mut files_to_convert = Vec::new();
 
+        for entry in dir_reader {
+            let entry = entry.with_context(|_| {
+                format!(
+                    "Unable to read directory entry in '{}'.",
+                    input_path.display()
+                )
+            })?;
+            let input_filename = entry.path();
+            if is_file_with_extension(&input_filename, input_extension) {
+                let output_filename =
+                    to_output_filename(&input_filename, &output_path, output_extension)
+                        .with_context(|_| {
+                            format!(
+                                "Unable to create output filename for input file '{}'.",
+                                input_filename.display()
+                            )
+                        })?;
+
+                files_to_convert.push((input_filename.to_owned(), output_filename));
+            }
+        }
+
+        files_to_convert
+    };
+
+    files_to_convert
+        .par_iter()
+        .for_each(|(input_filename, output_filename)| {
             println!(
                 "Converting '{}' to '{}' ...",
-                input_filename.to_string_lossy(),
-                output_filename.to_string_lossy()
+                input_filename.display(),
+                output_filename.display()
             );
 
             let conversion_result =
-                conversion_fn(&input_filename, &output_filename).chain_err(|| {
+                conversion_fn(&input_filename, &output_filename).with_context(|_| {
                     format!(
                         "Unable to convert '{}' to '{}'.",
-                        input_filename.to_string_lossy(),
-                        output_filename.to_string_lossy()
+                        input_filename.display(),
+                        output_filename.display()
                     )
                 });
 
             if let Err(err) = conversion_result {
-                println!("{}", format_err(&err));
+                println!("{}", format_fail(&err));
             }
-        }
-    }
+        });
 
     Ok(())
 }
 
-fn convert_graphics(root_dir: &str) -> ::Result<()> {
+fn convert_graphics(root_dir: &str) -> Result<()> {
     let gfx_input_path: PathBuf = [root_dir, GFX_INPUT_DIR].iter().collect();
     let gfx_output_path: PathBuf = [root_dir, GFX_OUTPUT_DIR].iter().collect();
 
@@ -265,7 +263,7 @@ fn convert_graphics(root_dir: &str) -> ::Result<()> {
     )
 }
 
-fn convert_txt(input_filename: &Path, output_filename: &Path) -> ::Result<()> {
+fn convert_txt(input_filename: &Path, output_filename: &Path) -> Result<()> {
     let file_contents = read_file_contents(input_filename)?;
 
     let converted_file_contents = {
@@ -274,7 +272,7 @@ fn convert_txt(input_filename: &Path, output_filename: &Path) -> ::Result<()> {
         for &c in &file_contents {
             match c {
                 10 => s.push_str(LINE_ENDING),
-                11...137 => s.push((c - 10) as char),
+                11..=136 => s.push((c - 10) as char),
                 139 => s.push('ü'),
                 164 => s.push('Ü'),
                 142 => s.push('ä'),
@@ -285,7 +283,7 @@ fn convert_txt(input_filename: &Path, output_filename: &Path) -> ::Result<()> {
                 235 => s.push('ß'),
                 _ => bail!(
                     "'{}' contains illegal character {}",
-                    input_filename.to_string_lossy(),
+                    input_filename.display(),
                     c
                 )
             };
@@ -296,15 +294,12 @@ fn convert_txt(input_filename: &Path, output_filename: &Path) -> ::Result<()> {
 
     let mut file = create_output_file(output_filename)?;
     file.write_all(converted_file_contents.as_bytes())
-        .chain_err(|| {
-            format!(
-                "Unable to write to '{}'.",
-                output_filename.to_string_lossy()
-            )
-        })
+        .with_context(|_| format!("Unable to write to '{}'.", output_filename.display()))?;
+
+    Ok(())
 }
 
-fn convert_texts(root_dir: &str) -> ::Result<()> {
+fn convert_texts(root_dir: &str) -> Result<()> {
     let txt_input_path: PathBuf = [root_dir, TEXT_INPUT_DIR].iter().collect();
     let txt_output_path: PathBuf = [root_dir, TEXT_OUTPUT_DIR].iter().collect();
 
@@ -327,7 +322,7 @@ fn pause() {
     let _ = stdin.read(&mut [0u8]).unwrap();
 }
 
-fn run(root_dir: &str) -> ::Result<()> {
+fn run(root_dir: &str) -> Result<()> {
     println!("Converting graphics ...");
     convert_graphics(root_dir)?;
 
@@ -351,14 +346,17 @@ fn main() {
                      The TCT files in the TEXT directory are converted to UTF-8 text files and written to the new directory TEXT_TXT.")
         .get_matches();
 
-    println!(concat!(env!("CARGO_PKG_NAME"), " ", env!("CARGO_PKG_VERSION")));
+    println!(concat!(
+        env!("CARGO_PKG_NAME"),
+        " ",
+        env!("CARGO_PKG_VERSION")
+    ));
     println!(env!("CARGO_PKG_AUTHORS"));
     println!();
 
     if let Err(ref err) = run(matches.value_of("DIRECTORY").unwrap_or(".")) {
-        eprintln!("{}", format_err(err));
+        eprintln!("{}", format_fail(err.as_fail()));
         pause();
-
         std::process::exit(1);
     } else {
         pause();
