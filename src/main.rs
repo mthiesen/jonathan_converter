@@ -1,13 +1,13 @@
 use clap::{App, Arg};
 use failure::{bail, Fail, ResultExt};
 use pcx;
-use png::{self, HasParameters};
+use png;
 use rayon::prelude::*;
 use std::{
     fs::{read_dir, DirBuilder, File, OpenOptions},
     io::{BufWriter, Read, Write},
     iter,
-    path::{Path, PathBuf}
+    path::{Path, PathBuf},
 };
 
 type Result<T> = failure::Fallible<T>;
@@ -57,14 +57,14 @@ fn create_output_file(path: &Path) -> Result<File> {
 fn to_output_filename(
     input_path: &Path,
     output_path: &Path,
-    output_extension: &str
+    output_extension: &str,
 ) -> Result<PathBuf> {
     let stem = match input_path.file_stem() {
         Some(stem) => stem,
         None => bail!(
             "Input path '{}' does not have a stem.",
             input_path.display()
-        )
+        ),
     };
 
     let mut output_filename = PathBuf::new();
@@ -161,9 +161,8 @@ fn convert_pcx(input_filename: &Path, output_filename: &Path) -> Result<()> {
 
     let writer = BufWriter::new(create_output_file(output_filename)?);
     let mut png_encoder = png::Encoder::new(writer, width as u32, height as u32);
-    png_encoder
-        .set(png::ColorType::Indexed)
-        .set(png::BitDepth::Eight);
+    png_encoder.set_color(png::ColorType::Indexed);
+    png_encoder.set_depth(png::BitDepth::Eight);
 
     let mut png_writer = png_encoder
         .write_header()
@@ -185,7 +184,7 @@ fn convert_dir(
     input_extension: &str,
     output_path: &Path,
     output_extension: &str,
-    conversion_fn: &(dyn Fn(&Path, &Path) -> Result<()> + Sync)
+    conversion_fn: &(dyn Fn(&Path, &Path) -> Result<()> + Sync),
 ) -> Result<()> {
     let dir_reader = read_dir(&input_path).with_context(|_| {
         format!(
@@ -259,7 +258,7 @@ fn convert_graphics(root_dir: &str) -> Result<()> {
         "PCX",
         &gfx_output_path,
         "PNG",
-        &convert_pcx
+        &convert_pcx,
     )
 }
 
@@ -285,7 +284,7 @@ fn convert_txt(input_filename: &Path, output_filename: &Path) -> Result<()> {
                     "'{}' contains illegal character {}",
                     input_filename.display(),
                     c
-                )
+                ),
             };
         }
 
@@ -308,7 +307,7 @@ fn convert_texts(root_dir: &str) -> Result<()> {
         "TCT",
         &txt_output_path,
         "TXT",
-        &convert_txt
+        &convert_txt,
     )
 }
 
