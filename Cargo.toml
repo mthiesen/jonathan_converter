@@ -9,5 +9,5 @@ authors = ["Malte Thiesen <malte@kamalook.de>"]
 clap = "2.33.0"
 failure = "0.1.6"
 pcx = "0.2"
-png = "0.15.3"
+png = "0.16.1"
 rayon = "1.3.0"
