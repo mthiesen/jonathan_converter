@@ -148,7 +148,7 @@ fn convert_pcx(input_filename: &Path, output_filename: &Path) -> Result<()> {
     };
 
     let palette_data = {
-        let mut palette_data = [0u8; 256 * 3];
+        let mut palette_data = vec![0u8; 256 * 3];
         let _ = pcx_file.read_palette(&mut palette_data).with_context(|_| {
             format!(
                 "Error occurred while decoding palette of '{}'.",
@@ -162,18 +162,15 @@ fn convert_pcx(input_filename: &Path, output_filename: &Path) -> Result<()> {
     let mut png_encoder = png::Encoder::new(writer, width as u32, height as u32);
     png_encoder.set_color(png::ColorType::Indexed);
     png_encoder.set_depth(png::BitDepth::Eight);
+    png_encoder.set_palette(palette_data);
 
     let mut png_writer = png_encoder
         .write_header()
-        .with_context(|_| format!("Unable to write to '{}'.", input_filename.display()))?;
-
-    png_writer
-        .write_chunk(png::chunk::PLTE, &palette_data)
-        .with_context(|_| format!("Unable to write to '{}'.", input_filename.display()))?;
+        .with_context(|_| format!("Unable to write to '{}'.", output_filename.display()))?;
 
     png_writer
         .write_image_data(&image_data)
-        .with_context(|_| format!("Unable to write to '{}'.", input_filename.display()))?;
+        .with_context(|_| format!("Unable to write to '{}'.", output_filename.display()))?;
 
     Ok(())
 }
