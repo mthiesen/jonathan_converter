@@ -143,7 +143,7 @@ dependencies = [
 
 [[package]]
 name = "data-encoding"
-version = "2.2.1"
+version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -208,7 +208,7 @@ name = "jonathan_converter"
 version = "1.0.0"
 dependencies = [
  "clap 2.33.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "data-encoding 2.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "data-encoding 2.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "fs_extra 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "pcx 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -605,7 +605,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum crossbeam-epoch 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5064ebdbf05ce3cb95e45c8b086f72263f4166b29b97f6baff7ef7fe047b55ac"
 "checksum crossbeam-queue 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "c695eeca1e7173472a32221542ae469b3e9aac3a4fc81f7696bcad82029493db"
 "checksum crossbeam-utils 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ce446db02cdc3165b94ae73111e570793400d0794e46125cc4056c81cbb039f4"
-"checksum data-encoding 2.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "72aa14c04dfae8dd7d8a2b1cb7ca2152618cd01336dbfe704b8dcbf8d41dbd69"
+"checksum data-encoding 2.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d4d0e2d24e5ee3b23a01de38eefdcd978907890701f08ffffd4cb457ca4ee8d6"
 "checksum deflate 0.8.3 (registry+https://github.com/rust-lang/crates.io-index)" = "050ef6de42a33903b30a7497b76b40d3d58691d4d3eec355348c122444a388f0"
 "checksum either 1.5.3 (registry+https://github.com/rust-lang/crates.io-index)" = "bb1f6b1ce1c140482ea30ddd3335fc0024ac7ee112895426e0a629a6c20adfe3"
 "checksum failure 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)" = "d32e9bd16cc02eae7db7ef620b392808b89f6a5e16bb3497d159c6b92a0f4f86"
