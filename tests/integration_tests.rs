@@ -1644,9 +1644,13 @@ fn verify_converted_image_files(path: impl AsRef<Path>) {
         let path = entry.unwrap().path();
         let file = fs::File::open(&path).unwrap();
 
-        let decoder = png::Decoder::new(file);
-        let (info, mut reader) = decoder.read_info().unwrap();
-        let mut buf = vec![0; info.buffer_size()];
+        let decoder = {
+            let mut decoder = png::Decoder::new(file);
+            decoder.set_transformations(png::Transformations::EXPAND);
+            decoder
+        };
+        let mut reader = decoder.read_info().unwrap();
+        let mut buf = vec![0; reader.output_buffer_size()];
         reader.next_frame(&mut buf).unwrap();
 
         let computed_hash = sha256_digest(Cursor::new(buf));
