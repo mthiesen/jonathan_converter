@@ -1,6 +1,4 @@
 use failure::{bail, Fail, ResultExt};
-use pcx;
-use png;
 use rayon::prelude::*;
 use std::{
     fs::{read_dir, DirBuilder, File, OpenOptions},
@@ -204,7 +202,7 @@ fn convert_dir(
             let input_filename = entry.path();
             if is_file_with_extension(&input_filename, input_extension) {
                 let output_filename =
-                    to_output_filename(&input_filename, &output_path, output_extension)
+                    to_output_filename(&input_filename, output_path, output_extension)
                         .with_context(|_| {
                             format!(
                                 "Unable to create output filename for input file '{}'.",
@@ -229,7 +227,7 @@ fn convert_dir(
             );
 
             let conversion_result =
-                conversion_fn(&input_filename, &output_filename).with_context(|_| {
+                conversion_fn(input_filename, output_filename).with_context(|_| {
                     format!(
                         "Unable to convert '{}' to '{}'.",
                         input_filename.display(),
