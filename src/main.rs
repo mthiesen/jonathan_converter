@@ -17,7 +17,7 @@ fn main() {
         .author(env!("CARGO_PKG_AUTHORS"))
         .version(env!("CARGO_PKG_VERSION"))
         .about(env!("CARGO_PKG_DESCRIPTION"))
-        .arg(Arg::with_name("DIRECTORY")
+        .arg(Arg::new("DIRECTORY")
             .help("The root directory of the 'Jonathan' game. By default the current directory is used.")
             .index(1))
         .after_help("The PCX files in the GRAFIK directory are converted to PNG files and written to the new directory GRAFIK_PNG.\n\
