@@ -9,7 +9,7 @@ authors = ["Malte Thiesen <malte@kamalook.de>"]
 clap = "3.0.14"
 failure = "0.1.8"
 pcx = "0.2"
-png = "0.17.2"
+png = "0.17.5"
 rayon = "1.5.1"
 
 [dev-dependencies]
