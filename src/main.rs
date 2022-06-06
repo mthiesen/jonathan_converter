@@ -1,5 +1,4 @@
 use clap::{Command, Arg};
-use jonathan_converter::format_fail;
 use std::io::prelude::*;
 
 fn pause() {
@@ -33,7 +32,7 @@ fn main() {
     println!();
 
     if let Err(ref err) = jonathan_converter::run(matches.value_of("DIRECTORY").unwrap_or(".")) {
-        eprintln!("{}", format_fail(err.as_fail()));
+        eprintln!("{err:#}");
         pause();
         std::process::exit(1);
     } else {

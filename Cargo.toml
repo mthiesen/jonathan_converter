@@ -7,7 +7,7 @@ authors = ["Malte Thiesen <malte@kamalook.de>"]
 
 [dependencies]
 clap = "3.1.12"
-failure = "0.1.8"
+eyre = "0.6.8"
 pcx = "0.2"
 png = "0.17.5"
 rayon = "1.5.3"

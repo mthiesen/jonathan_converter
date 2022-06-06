@@ -1,13 +1,12 @@
-use failure::{bail, Fail, ResultExt};
+use eyre::Result;
+use eyre::WrapErr;
+use eyre::bail;
 use rayon::prelude::*;
 use std::{
     fs::{read_dir, DirBuilder, File, OpenOptions},
     io::{BufWriter, Read, Write},
-    iter,
     path::{Path, PathBuf},
 };
-
-type Result<T> = failure::Fallible<T>;
 
 // -------------------------------------------------------------------------------------------------
 
@@ -23,15 +22,6 @@ const LINE_ENDING: &str = "\r\n";
 const LINE_ENDING: &str = "\n";
 
 // -------------------------------------------------------------------------------------------------
-
-pub fn format_fail(fail: &dyn Fail) -> String {
-    let mut formatted_fail = String::new();
-    let prefixes = iter::once("error").chain(iter::repeat("caused by"));
-    for (prefix, cause) in prefixes.zip(fail.iter_chain()) {
-        formatted_fail.push_str(&format!("{}: {}\n", prefix, cause));
-    }
-    formatted_fail
-}
 
 fn is_file_with_extension(path: &Path, extension_upper: &str) -> bool {
     if path.is_file() {
@@ -50,7 +40,7 @@ fn create_output_file(path: &Path) -> Result<File> {
         .truncate(true)
         .create(true)
         .open(&path)
-        .with_context(|_| {
+        .wrap_err_with(|| {
             format!(
                 "Unable to create '{}'. Is the path writable?",
                 path.display()
@@ -84,11 +74,11 @@ fn read_file_contents(filename: &Path) -> Result<Vec<u8>> {
     let mut input_file = OpenOptions::new()
         .read(true)
         .open(filename)
-        .with_context(|_| format!("Unable to open input file '{}'.", filename.display()))?;
+        .wrap_err_with(|| format!("Unable to open input file '{}'.", filename.display()))?;
     let mut contents = Vec::new();
     let _ = input_file
         .read_to_end(&mut contents)
-        .with_context(|_| format!("Unable to read input file '{}'.", filename.display()))?;
+        .wrap_err_with(|| format!("Unable to read input file '{}'.", filename.display()))?;
     Ok(contents)
 }
 
@@ -111,7 +101,7 @@ fn convert_pcx(input_filename: &Path, output_filename: &Path) -> Result<()> {
         input_file_contents
     };
 
-    let mut pcx_file = pcx::Reader::new(input_file_contents.as_slice()).with_context(|_| {
+    let mut pcx_file = pcx::Reader::new(input_file_contents.as_slice()).wrap_err_with(|| {
         format!(
             "Unable to read contents of '{}' as PCX file.",
             input_filename.display()
@@ -135,7 +125,7 @@ fn convert_pcx(input_filename: &Path, output_filename: &Path) -> Result<()> {
             let end = begin + width;
             pcx_file
                 .next_row_paletted(&mut image_data[begin..end])
-                .with_context(|_| {
+                .wrap_err_with(|| {
                     format!(
                         "Error occurred while decoding '{}'.",
                         input_filename.display()
@@ -147,7 +137,7 @@ fn convert_pcx(input_filename: &Path, output_filename: &Path) -> Result<()> {
 
     let palette_data = {
         let mut palette_data = vec![0u8; 256 * 3];
-        let _ = pcx_file.read_palette(&mut palette_data).with_context(|_| {
+        let _ = pcx_file.read_palette(&mut palette_data).wrap_err_with(|| {
             format!(
                 "Error occurred while decoding palette of '{}'.",
                 input_filename.display()
@@ -164,11 +154,11 @@ fn convert_pcx(input_filename: &Path, output_filename: &Path) -> Result<()> {
 
     let mut png_writer = png_encoder
         .write_header()
-        .with_context(|_| format!("Unable to write to '{}'.", output_filename.display()))?;
+        .wrap_err_with(|| format!("Unable to write to '{}'.", output_filename.display()))?;
 
     png_writer
         .write_image_data(&image_data)
-        .with_context(|_| format!("Unable to write to '{}'.", output_filename.display()))?;
+        .wrap_err_with(|| format!("Unable to write to '{}'.", output_filename.display()))?;
 
     Ok(())
 }
@@ -180,7 +170,7 @@ fn convert_dir(
     output_extension: &str,
     conversion_fn: &(dyn Fn(&Path, &Path) -> Result<()> + Sync),
 ) -> Result<()> {
-    let dir_reader = read_dir(&input_path).with_context(|_| {
+    let dir_reader = read_dir(&input_path).wrap_err_with(|| {
         format!(
             "Unable to read directory '{}'. Is the provided path correct?",
             input_path.display()
@@ -193,7 +183,7 @@ fn convert_dir(
         let mut files_to_convert = Vec::new();
 
         for entry in dir_reader {
-            let entry = entry.with_context(|_| {
+            let entry = entry.wrap_err_with(|| {
                 format!(
                     "Unable to read directory entry in '{}'.",
                     input_path.display()
@@ -203,7 +193,7 @@ fn convert_dir(
             if is_file_with_extension(&input_filename, input_extension) {
                 let output_filename =
                     to_output_filename(&input_filename, output_path, output_extension)
-                        .with_context(|_| {
+                        .wrap_err_with(|| {
                             format!(
                                 "Unable to create output filename for input file '{}'.",
                                 input_filename.display()
@@ -227,7 +217,7 @@ fn convert_dir(
             );
 
             let conversion_result =
-                conversion_fn(input_filename, output_filename).with_context(|_| {
+                conversion_fn(input_filename, output_filename).wrap_err_with(|| {
                     format!(
                         "Unable to convert '{}' to '{}'.",
                         input_filename.display(),
@@ -236,7 +226,7 @@ fn convert_dir(
                 });
 
             if let Err(err) = conversion_result {
-                println!("{}", format_fail(&err));
+                println!("{:#}", err);
             }
         });
 
@@ -287,7 +277,7 @@ fn convert_txt(input_filename: &Path, output_filename: &Path) -> Result<()> {
 
     let mut file = create_output_file(output_filename)?;
     file.write_all(converted_file_contents.as_bytes())
-        .with_context(|_| format!("Unable to write to '{}'.", output_filename.display()))?;
+        .wrap_err_with(|| format!("Unable to write to '{}'.", output_filename.display()))?;
 
     Ok(())
 }
