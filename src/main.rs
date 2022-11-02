@@ -1,4 +1,4 @@
-use clap::{Command, Arg};
+use clap::{Arg, Command};
 use std::io::prelude::*;
 
 fn pause() {
@@ -31,7 +31,9 @@ fn main() {
     println!(env!("CARGO_PKG_AUTHORS"));
     println!();
 
-    if let Err(ref err) = jonathan_converter::run(matches.value_of("DIRECTORY").unwrap_or(".")) {
+    if let Err(ref err) =
+        jonathan_converter::run(matches.get_one::<String>("DIRECTORY").unwrap_or(&".".to_string()))
+    {
         eprintln!("{err:#}");
         pause();
         std::process::exit(1);
