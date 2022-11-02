@@ -1,6 +1,6 @@
+use eyre::bail;
 use eyre::Result;
 use eyre::WrapErr;
-use eyre::bail;
 use rayon::prelude::*;
 use std::{
     fs::{read_dir, DirBuilder, File, OpenOptions},
