@@ -6,7 +6,7 @@ description = "Converts the graphics and text resources of the classic adventure
 authors = ["Malte Thiesen <malte@kamalook.de>"]
 
 [dependencies]
-clap = "4.0.18"
+clap = "4.1.1"
 eyre = "0.6.8"
 pcx = "0.2"
 png = "0.17.7"
